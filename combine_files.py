@@ -3,16 +3,12 @@ import tiktoken
 import argparse
 from datetime import datetime
 
-# Текущая директория, откуда запущен скрипт
 current_dir = os.getcwd()
 
-# Список расширений файлов по умолчанию
 text_extensions = [".txt", ".py", ".md", ".csv"]
 
-# Дефолтный путь для сохранения файла (без имени файла, только директория)
 DEFAULT_OUTPUT_DIR = "/Users/diplug/my_dev/temp_file"
 
-# Максимальное количество токенов в одном файле
 MAX_TOKENS = 10000
 
 
@@ -107,22 +103,17 @@ def combine_files(start_dir=current_dir, output_path=None, target_files=None):
     """Главная функция для объединения файлов"""
     # Получаем имя папки из текущей директории
     folder_name = os.path.basename(start_dir)
-    # Получаем текущее время в формате ГГГГ-ММ-ДД_ЧЧ-ММ-СС
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
-    # Если output_path не указан, формируем базовое имя файла
     if output_path is None:
         output_base_filename = f"combined_{folder_name}_{timestamp}"
         output_base_path = os.path.join(DEFAULT_OUTPUT_DIR, output_base_filename)
     else:
-        # Если указан путь, используем его как базовый (без расширения пока)
         output_base_path = os.path.splitext(output_path)[0]
 
-    # Убеждаемся, что директория для выходного файла существует
     os.makedirs(os.path.dirname(output_base_path), exist_ok=True)
 
     try:
-        # Собираем все строки
         all_lines = process_directory(
             start_dir, base_dir=start_dir, target_files=target_files
         )
@@ -131,7 +122,6 @@ def combine_files(start_dir=current_dir, output_path=None, target_files=None):
         total_tokens = count_tokens("\n".join(all_lines))
         print(f"\nОбщее количество токенов: {total_tokens}")
 
-        # Разбиваем и сохраняем
         split_and_save(all_lines, output_base_path)
 
         print(
@@ -145,7 +135,6 @@ def combine_files(start_dir=current_dir, output_path=None, target_files=None):
 
 
 if __name__ == "__main__":
-    # Настройка аргументов командной строки
     parser = argparse.ArgumentParser(
         description="Объединяет текстовые файлы в один с оптимизацией токенов."
     )
