@@ -36,10 +36,12 @@ def count_tokens(text: str) -> int:
     return len(ENCODING.encode(text))
 
 
-def optimize_content(content):
+# Добавляем аргумент filepath
+def optimize_content(content, filepath):
     """Оптимизирует содержимое файла для уменьшения токенов"""
     lines = [line.strip() for line in content.splitlines() if line.strip()]
-    if content.endswith(".py"):
+    # Проверяем расширение файла по пути
+    if filepath.endswith(".py"):  # Используем filepath
         lines = [line for line in lines if not line.startswith("#")]
     return " ".join(lines)
 
@@ -53,28 +55,61 @@ def process_directory(directory, base_dir, target_files=None):
                 continue
 
             item_path = os.path.join(directory, item)
-            relative_path = os.path.relpath(item_path, base_dir)
-
-            if target_files is not None and item not in target_files:
+            try:
+                relative_path = os.path.relpath(item_path, base_dir).replace(
+                    os.sep, "/"
+                )
+            except ValueError as e:
+                logger.warning(
+                    f"Не удалось получить относительный путь для {item_path} от {base_dir}: {e}"
+                )
                 continue
 
-            if os.path.isfile(item_path) and any(
-                item.endswith(ext) for ext in text_extensions
-            ):
-                try:
-                    with open(item_path, "r", encoding="utf-8") as infile:
-                        content = infile.read()
-                        optimized_content = optimize_content(content)
+            is_file = os.path.isfile(item_path)
+            is_dir = os.path.isdir(item_path)
+
+            if is_file:
+                process_this_file = False
+                if target_files is not None:
+                    if relative_path in target_files:
+                        process_this_file = True
+
+                else:
+                    if any(item.endswith(ext) for ext in text_extensions):
+                        process_this_file = True
+
+                if process_this_file:
+                    try:
+                        with open(
+                            item_path, "r", encoding="utf-8", errors="ignore"
+                        ) as infile:
+                            content = infile.read()
+                        optimized_content = optimize_content(content, item_path)
                         result_lines.append(f"[{relative_path}] {optimized_content}")
-                    logger.info(f"Обработан файл: {relative_path}")
-                except Exception as e:
-                    logger.error(f"Ошибка при обработке файла {item_path}: {str(e)}")
+                        logger.info(f"Обработан файл: {relative_path}")
+                    except Exception as e:
+                        logger.error(
+                            f"Ошибка при обработке файла {item_path}: {str(e)}"
+                        )
 
-            elif os.path.isdir(item_path):
-                result_lines.extend(
-                    process_directory(item_path, base_dir, target_files)
-                )
+            elif is_dir:
+                should_recurse = True
+                if target_files is not None:
+                    dir_prefix = relative_path + "/"
+                    if not any(
+                        target.startswith(dir_prefix) for target in target_files
+                    ):
+                        should_recurse = False
 
+                if should_recurse:
+                    result_lines.extend(
+                        process_directory(item_path, base_dir, target_files)
+                    )
+
+    except FileNotFoundError:
+        logger.warning(f"Директория не найдена при сканировании: {directory}")
+    except PermissionError:
+        logger.warning(f"Нет прав доступа к директории: {directory}")
     except Exception as e:
         logger.error(f"Ошибка при обработке директории {directory}: {str(e)}")
 
@@ -90,7 +125,6 @@ def split_and_save(lines, output_base_path):
     for line in lines:
         line_tokens = count_tokens(line)
 
-        # Если добавление строки превысит лимит, сохраняем текущую часть
         if current_tokens + line_tokens > MAX_TOKENS and current_content:
             output_path = f"{output_base_path}_part{current_part}.txt"
             with open(output_path, "w", encoding="utf-8") as outfile:
@@ -99,12 +133,9 @@ def split_and_save(lines, output_base_path):
             current_part += 1
             current_content = []
             current_tokens = 0
-
-        # Добавляем строку в текущую часть
         current_content.append(line)
         current_tokens += line_tokens
 
-    # Сохраняем последнюю часть, если есть что сохранять
     if current_content:
         output_path = (
             f"{output_base_path}_part{current_part}.txt"
@@ -140,7 +171,8 @@ def combine_files(start_dir=current_dir, output_path=None, target_files=None):
         split_and_save(all_lines, output_base_path)
 
         logger.info(
-            f"Все содержимое обработано и сохранено (файлов: {len([l for l in all_lines if l.strip()])})"
+            "Все содержимое обработано и сохранено (файлов)"
+            f"{len([l for l in all_lines if l.strip()])})"
         )
         logger.info(f"Количество символов в сумме: {len(''.join(all_lines))}")
         logger.info(f"Количество слов в сумме: {len(' '.join(all_lines).split())}")
@@ -158,7 +190,7 @@ if __name__ == "__main__":
         "--output",
         type=str,
         default=None,
-        help="Путь для сохранения выходного файла (по умолчанию: combined_<folder>_<timestamp>.txt в /Users/diplug/my_dev/temp_file)",
+        help="Путь для сохранения выходного файла",
     )
     parser.add_argument(
         "-f",

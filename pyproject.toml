@@ -1,9 +1,17 @@
 [project]
-name = "useful-scripts"
+name = "combine_files"
 version = "0.1.0"
-description = "Add your description here"
+description = "Скрипт для объединения текстовых файлов с оптимизацией токенов"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.8"
 dependencies = [
-    "tiktoken>=0.9.0",
+    "tiktoken>=0.5.0",
 ]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+line-length = 100
+target-version = "py38"
