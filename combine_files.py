@@ -2,6 +2,15 @@ import os
 import tiktoken
 import argparse
 from datetime import datetime
+import logging
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+
+logger = logging.getLogger(__name__)
 
 current_dir = os.getcwd()
 
@@ -10,13 +19,21 @@ text_extensions = [".txt", ".py", ".md", ".csv"]
 DEFAULT_OUTPUT_DIR = "/Users/diplug/my_dev/temp_file"
 
 MAX_TOKENS = 10000
+ENCODING_NAME = "cl100k_base"
 
 
-def count_tokens(text, encoding_name="cl100k_base"):
-    """Подсчитывает количество токенов"""
-    encoding = tiktoken.get_encoding(encoding_name)
-    tokens = encoding.encode(text)
-    return len(tokens)
+try:
+    ENCODING = tiktoken.get_encoding(ENCODING_NAME)
+except Exception as e:
+    logger.error(
+        f"Ну удалось получить кодировку tiktoken{ENCODING_NAME} ошибка: {str(e)}"
+        "Проверьте, что у вас установлено tiktoken.\n"
+        "Установка: pip install tiktoken"
+    )
+
+
+def count_tokens(text: str) -> int:
+    return len(ENCODING.encode(text))
 
 
 def optimize_content(content):
@@ -49,9 +66,9 @@ def process_directory(directory, base_dir, target_files=None):
                         content = infile.read()
                         optimized_content = optimize_content(content)
                         result_lines.append(f"[{relative_path}] {optimized_content}")
-                    print(f"Обработан файл: {relative_path}")
+                    logger.info(f"Обработан файл: {relative_path}")
                 except Exception as e:
-                    print(f"Ошибка при обработке файла {item_path}: {str(e)}")
+                    logger.error(f"Ошибка при обработке файла {item_path}: {str(e)}")
 
             elif os.path.isdir(item_path):
                 result_lines.extend(
@@ -59,7 +76,7 @@ def process_directory(directory, base_dir, target_files=None):
                 )
 
     except Exception as e:
-        print(f"Ошибка при обработке директории {directory}: {str(e)}")
+        logger.error(f"Ошибка при обработке директории {directory}: {str(e)}")
 
     return result_lines
 
@@ -78,7 +95,7 @@ def split_and_save(lines, output_base_path):
             output_path = f"{output_base_path}_part{current_part}.txt"
             with open(output_path, "w", encoding="utf-8") as outfile:
                 outfile.write("\n".join(current_content) + "\n")
-            print(f"Сохранена часть: {output_path} (токенов: {current_tokens})")
+            logger.info(f"Сохранена часть: {output_path} (токенов: {current_tokens})")
             current_part += 1
             current_content = []
             current_tokens = 0
@@ -96,12 +113,11 @@ def split_and_save(lines, output_base_path):
         )
         with open(output_path, "w", encoding="utf-8") as outfile:
             outfile.write("\n".join(current_content) + "\n")
-        print(f"Сохранена часть: {output_path} (токенов: {current_tokens})")
+        logger.info(f"Сохранена часть: {output_path} (токенов: {current_tokens})")
 
 
 def combine_files(start_dir=current_dir, output_path=None, target_files=None):
     """Главная функция для объединения файлов"""
-    # Получаем имя папки из текущей директории
     folder_name = os.path.basename(start_dir)
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
@@ -118,20 +134,19 @@ def combine_files(start_dir=current_dir, output_path=None, target_files=None):
             start_dir, base_dir=start_dir, target_files=target_files
         )
 
-        # Проверяем общее количество токенов
         total_tokens = count_tokens("\n".join(all_lines))
-        print(f"\nОбщее количество токенов: {total_tokens}")
+        logger.info(f"\nОбщее количество токенов: {total_tokens}")
 
         split_and_save(all_lines, output_base_path)
 
-        print(
+        logger.info(
             f"Все содержимое обработано и сохранено (файлов: {len([l for l in all_lines if l.strip()])})"
         )
-        print(f"Количество символов в сумме: {len(''.join(all_lines))}")
-        print(f"Количество слов в сумме: {len(' '.join(all_lines).split())}")
+        logger.info(f"Количество символов в сумме: {len(''.join(all_lines))}")
+        logger.info(f"Количество слов в сумме: {len(' '.join(all_lines).split())}")
 
     except Exception as e:
-        print(f"Произошла ошибка: {str(e)}")
+        logger.info(f"Произошла ошибка: {str(e)}")
 
 
 if __name__ == "__main__":
