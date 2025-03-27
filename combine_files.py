@@ -36,12 +36,10 @@ def count_tokens(text: str) -> int:
     return len(ENCODING.encode(text))
 
 
-# Добавляем аргумент filepath
 def optimize_content(content, filepath):
     """Оптимизирует содержимое файла для уменьшения токенов"""
     lines = [line.strip() for line in content.splitlines() if line.strip()]
-    # Проверяем расширение файла по пути
-    if filepath.endswith(".py"):  # Используем filepath
+    if filepath.endswith(".py"):
         lines = [line for line in lines if not line.startswith("#")]
     return " ".join(lines)
 
@@ -129,7 +127,9 @@ def split_and_save(lines, output_base_path):
             output_path = f"{output_base_path}_part{current_part}.txt"
             with open(output_path, "w", encoding="utf-8") as outfile:
                 outfile.write("\n".join(current_content) + "\n")
-            logger.info(f"Сохранена часть: {output_path} (токенов: {current_tokens})")
+            logger.info(
+                f"Сохранена часть: {output_path} (токенов: {current_tokens})"
+                )
             current_part += 1
             current_content = []
             current_tokens = 0
@@ -144,7 +144,8 @@ def split_and_save(lines, output_base_path):
         )
         with open(output_path, "w", encoding="utf-8") as outfile:
             outfile.write("\n".join(current_content) + "\n")
-        logger.info(f"Сохранена часть: {output_path} (токенов: {current_tokens})")
+        logger.info(
+            f"Сохранена часть: {output_path} (токенов: {current_tokens})")
 
 
 def combine_files(start_dir=current_dir, output_path=None, target_files=None):
